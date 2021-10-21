@@ -1,7 +1,7 @@
 const { Router } = require("express");
 const mongoose = require("mongoose");
 
-const { User } = require("../models/User");
+const { Blog, User, Comment } = require("../models");
 
 const userRouter = Router();
 
@@ -83,7 +83,17 @@ userRouter.put("/:userId", async (req, res) => {
     const user = await User.findById(userId);
     console.log({ userBeforeEdit: user });
     if (age) user.age = age;
-    if (name) user.name = name;
+    if (name) {
+      user.name = name;
+      await Promise.all([
+        Blog.updateMany({ "user._id": userId }, { "user.name": name }),
+        Blog.updateMany(
+          {},
+          { "comments.$[comment].userFullName": `${name.first} ${name.last}` },
+          { arrayFilters: [{ "comment.user": userId }] }
+        ),
+      ]);
+    }
     console.log({ userAfterEdit: user });
     await user.save(); // mongoose가 userBeforeEdit과 userAfterEdit을 비교해서 _id가 같으면 save할때 바뀐 부분만 찾아서 updateOne으로 처리
 
@@ -102,7 +112,15 @@ userRouter.delete("/:userId", async (req, res) => {
     if (!mongoose.isValidObjectId(userId))
       return res.status(400).send({ err: "invalid userId" });
 
-    const user = await User.findOneAndDelete({ _id: userId });
+    const [user] = await Promise.all([
+      User.findOneAndDelete({ _id: userId }),
+      Blog.deleteMany({ "user._id": userId }),
+      Blog.updateMany(
+        { "comments.user": userId },
+        { $pull: { comments: { user: userId } } }
+      ),
+      Comment.deleteMany({ user: userId }),
+    ]);
 
     return res.send({ user });
   } catch (err) {

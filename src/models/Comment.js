@@ -14,6 +14,11 @@ const CommentSchema = new Schema(
       type: ObjectId,
       required: true,
       ref: "user",
+      index: true,
+    },
+    userFullName: {
+      type: String,
+      required: true,
     },
     blog: {
       type: ObjectId,
@@ -26,6 +31,8 @@ const CommentSchema = new Schema(
   }
 );
 
+CommentSchema.index({ blog: 1, createdAt: -1 });
+
 const Comment = model("comment", CommentSchema);
 
-module.exports = { Comment };
+module.exports = { Comment, CommentSchema };

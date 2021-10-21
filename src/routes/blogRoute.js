@@ -1,15 +1,24 @@
 const { Router } = require("express");
 const { isValidObjectId } = require("mongoose");
-const { Blog } = require("../models/Blog");
-const { User } = require("../models/User");
+const { Blog, User, Comment } = require("../models");
 const { commentRouter } = require("./commentRoute");
 const blogRouter = Router();
 
-blogRouter.use("/:blogId/comment", commentRouter);
+blogRouter.use("/:blogId/comment", commentRouter); // commentRoute.js에서  Router({ mergeParams: true }) 로 하면 blogId 넘어감
 
 blogRouter.get("/", async (req, res) => {
   try {
-    const blogs = await Blog.find({});
+    let { page = 0 } = req.query;
+    page = parseInt(page);
+    const blogs = await Blog.find({})
+      .sort({ updatedAt: -1 })
+      .skip(page * 3)
+      .limit(3);
+    // .select("title content")
+    // .populate([
+    //   { path: "user" },
+    //   { path: "comments", populate: { path: "user" } },
+    // ]);
     return res.send({ blogs });
   } catch (err) {
     console.log({ err });
@@ -24,7 +33,9 @@ blogRouter.get("/:blogId", async (req, res) => {
       return res.status(400).send({ err: "blogId is invalid" });
 
     const blog = await Blog.findOne({ _id: blogId });
-    return res.send({ blog });
+    // const commentCount = await Comment.find({ blog: blogId }).countDocuments();
+
+    return res.send({ blog, commentCount });
   } catch (err) {
     console.log({ err });
     res.status(500).send({ err: err.message });
@@ -48,7 +59,8 @@ blogRouter.post("/", async (req, res) => {
 
     const blog = new Blog({
       ...req.body,
-      user, // 이렇게 user를 넣어주면 mongoose에서 ref를 통해서 ObjectId만 db에 넣어줌
+      // .toObject() 대신 new Schema 사용 가능
+      user: user.toObject(), // 이렇게 user를 넣어주면 mongoose에서 ref를 통해서 ObjectId만 db에 넣어줌 (BlogSchema의 user 타입에 맞춰서)
     });
     await blog.save();
     return res.send({ blog });

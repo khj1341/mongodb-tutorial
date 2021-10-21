@@ -1,21 +1,22 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const { userRouter } = require("./routes/userRoute");
-const { blogRouter } = require("./routes/blogRoute");
-const { commentRouter } = require("./routes/commentRoute");
-const app = express();
+const { userRouter, blogRouter } = require("./routes");
+// const { commentRouter } = require("./routes");
+const { generateFakeData } = require("../faker2");
 
-const MONGO_URI =
-  "mongodb+srv://admin:aF4ifnGcup8Is94d@mongodbtutorial.sqfgw.mongodb.net/BlogService?retryWrites=true&w=majority";
+const app = express();
 
 const server = async () => {
   try {
+    const { MONGO_URI, PORT } = process.env;
+    if (!MONGO_URI) throw new Error("MONGO_URI is required!!!");
+    if (!PORT) throw new Error("PORT is required!!!");
+
     await mongoose.connect(MONGO_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    mongoose.set("debug", true);
-
+    // mongoose.set("debug", true);
     console.log("MongoDB connected");
 
     // HTTP Request body의 JSON형태의 데이터가 넘어왔을떄 String 타입으로 넘어오는데,
@@ -38,7 +39,10 @@ const server = async () => {
     // logging: API 의 호출, 에러등을 기록
     // router: 라우터 처리
 
-    app.listen(3000, () => console.log("server listening on port 3000"));
+    app.listen(PORT, async () => {
+      console.log(`server listening on port ${PORT}`);
+      // await generateFakeData(10, 2, 10);
+    });
   } catch (err) {
     console.log({ err });
   }
